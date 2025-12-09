@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>VIP PREDICTION HUD</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      background: #000;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Background Site */
+    iframe.bg-site {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      border: none;
+      z-index: 1;
+    }
+
+    /* --- COMPACT WIDGET (Dialog Box) --- */
+    #widget {
+      position: fixed;
+      top: 100px;
+      left: 20px;
+      /* Super Compact Dimensions */
+      width: auto;
+      min-width: 260px;
+      height: 55px; 
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 30px;
+      z-index: 9999;
+      display: none; /* Controlled by JS */
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      
+      /* Layout */
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 5px 0 15px;
+      touch-action: none; /* Critical for smooth drag */
+    }
+
+    /* Left: Period Info */
+    .hud-section-left {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      margin-right: 10px;
+    }
+    .hud-label { font-size: 8px; color: #aaa; letter-spacing: 1px; }
+    .hud-value { font-size: 11px; color: #00d2d3; font-family: monospace; font-weight: bold; }
+
+    /* Center: Prediction */
+    .hud-section-center {
+      flex: 1;
+      text-align: center;
+      border-left: 1px solid rgba(255,255,255,0.1);
+      border-right: 1px solid rgba(255,255,255,0.1);
+      height: 70%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pred-text {
+      font-size: 20px;
+      font-weight: 900;
+      background: -webkit-linear-gradient(#f1c40f, #e67e22);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 10px rgba(230, 126, 34, 0.3);
+    }
+
+    /* Right: Timer */
+    .hud-section-right {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 45px;
+      height: 45px;
+      margin-left: 5px;
+    }
+    .timer-circle {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 2px solid #2ed573;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.05);
+      font-size: 13px;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    /* --- FLOATING BUTTON (Small & Smooth) --- */
+    #float-btn {
+      position: fixed;
+      bottom: 20%;
+      right: 10px;
+      z-index: 10000;
+      width: 50px;
+      height: 50px;
+      background: radial-gradient(circle, #212121, #000);
+      border: 2px solid #00d2d3;
+      border-radius: 50%;
+      box-shadow: 0 4px 15px rgba(0, 210, 211, 0.4);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      touch-action: none; /* Critical for smooth drag */
+      transition: transform 0.1s;
+    }
+    
+    #float-btn:active { transform: scale(0.95); }
+
+    .float-text {
+      font-size: 7px;
+      color: #00d2d3;
+      text-align: center;
+      font-weight: bold;
+      line-height: 1;
+      width: 90%;
+      word-break: break-all;
+    }
+
+    /* --- SHARE MODAL --- */
+    #share-modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 20000;
+      backdrop-filter: blur(5px);
+    }
+
+    #share-box {
+      background: #1a1a1a;
+      width: 80%;
+      max-width: 300px;
+      padding: 25px;
+      border-radius: 15px;
+      border: 1px solid #333;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(0,0,0,0.8);
+    }
+
+    #share-box h2 {
+      color: #fff;
+      font-size: 20px;
+      margin-bottom: 15px;
+      text-transform: uppercase;
+    }
+
+    #share-box p {
+      color: #888;
+      font-size: 12px;
+      margin-bottom: 20px;
+      line-height: 1.4;
+    }
+
+    .share-btn-main {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 12px;
+      width: 100%;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .progress-area {
+      margin-top: 15px;
+      background: #333;
+      height: 4px;
+      border-radius: 2px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: #2ed573;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    
+    .status-txt {
+      margin-top: 8px;
+      font-size: 10px;
+      color: #777;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Background -->
+  <iframe class="bg-site" src="https://www.82winww.com/#/register?invitationCode=14244992621"></iframe>
+
+  <!-- Share Modal -->
+  <div id="share-modal">
+    <div id="share-box">
+      <h2>UNLOCK ACCESS</h2>
+      <p>Share this tool to <strong>3 Friends/Groups</strong> to unlock the VIP Prediction HUD.</p>
+      
+      <button class="share-btn-main" id="share-action-btn">
+        SHARE NOW
+      </button>
+
+      <div class="progress-area"><div class="progress-bar" id="p-bar"></div></div>
+      <div class="status-txt" id="s-txt">0/3 Shared</div>
+    </div>
+  </div>
+
+  <!-- COMPACT WIDGET (Hidden by default) -->
+  <div id="widget" style="display:none;">
+    
+    <!-- Left -->
+    <div class="hud-section-left">
+      <div class="hud-label">PERIOD</div>
+      <div class="hud-value" id="period-display">...</div>
+    </div>
+
+    <!-- Center -->
+    <div class="hud-section-center">
+      <div class="pred-text" id="pred-display">--</div>
+    </div>
+
+    <!-- Right -->
+    <div class="hud-section-right">
+      <div class="timer-circle" id="timer-display">60</div>
+    </div>
+
+  </div>
+
+  <!-- Floating Button -->
+  <button id="float-btn">
+    <div class="float-text">Apkmodderkings</div>
+  </button>
+
+<script>
+/*
+=========================================================
+ 1. SHARE SYSTEM (All Apps)
+=========================================================
+*/
+const REQUIRED_SHARES = 3;
+const SHARE_DATA = {
+  title: 'VIP Hack Tool',
+  text: 'for more that type or free app join this telegram channel 👇\nhttps://telegram.me/apkmodderkings',
+  url: 'https://telegram.me/apkmodderkings'
+};
+
+let shareCount = 0;
+const shareModal = document.getElementById('share-modal');
+const widget = document.getElementById('widget');
+const floatBtn = document.getElementById('float-btn');
+const pBar = document.getElementById('p-bar');
+const sTxt = document.getElementById('s-txt');
+const shareBtn = document.getElementById('share-action-btn');
+
+// Check Unlock Status
+const unlockTime = localStorage.getItem('mm_vip_unlock_time');
+if(unlockTime && (Date.now() - parseInt(unlockTime) < 6*60*60*1000)) {
+  unlockApp();
+}
+
+function unlockApp() {
+  shareModal.style.display = 'none';
+  floatBtn.style.display = 'flex';
+  widget.style.display = 'flex'; // Show widget
+  startLogic();
+}
+
+shareBtn.addEventListener('click', async () => {
+  try {
+    // Try Native Share (Android/iOS)
+    if (navigator.share) {
+      await navigator.share(SHARE_DATA);
+      handleShareSuccess();
+    } else {
+      // Fallback for Desktop (Copy to clipboard/Open Link)
+      window.open(SHARE_DATA.url, '_blank');
+      handleShareSuccess();
+    }
+  } catch (err) {
+    // If user cancelled share, still count it (trick) or ignore
+    console.log('Share closed');
+    handleShareSuccess(); 
+  }
+});
+
+function handleShareSuccess() {
+  shareCount++;
+  const percentage = (shareCount / REQUIRED_SHARES) * 100;
+  pBar.style.width = percentage + "%";
+  
+  if(shareCount < REQUIRED_SHARES) {
+    sTxt.textContent = `${shareCount}/${REQUIRED_SHARES} Shared`;
+  } else {
+    sTxt.textContent = "VERIFYING SUCCESS...";
+    sTxt.style.color = "#2ed573";
+    
+    setTimeout(() => {
+      localStorage.setItem('mm_vip_unlock_time', Date.now());
+      unlockApp();
+    }, 1500);
+  }
+}
+
+// Toggle Widget visibility
+floatBtn.addEventListener('click', () => {
+  widget.style.display = (widget.style.display === 'flex') ? 'none' : 'flex';
+});
+
+/*
+=========================================================
+ 2. LOGIC (Prediction & Timer)
+=========================================================
+*/
+let lastPeriod = "";
+
+function startLogic() {
+  updateGame();
+  setInterval(updateGame, 1000);
+}
+
+function updateGame() {
+  const now = new Date();
+  
+  // Period ID
+  const datePart = now.toISOString().slice(0,10).replace(/-/g,'');
+  const mins = now.getUTCHours()*60 + now.getUTCMinutes();
+  const currentPeriod = `${datePart}1000${10001+mins}`;
+  
+  document.getElementById('period-display').textContent = currentPeriod.slice(-5); // Shorten period ID
+
+  // Countdown
+  const seconds = now.getSeconds();
+  const remaining = 60 - seconds;
+  const timerEl = document.getElementById('timer-display');
+  timerEl.textContent = remaining;
+  
+  if(remaining <= 10) {
+    timerEl.style.borderColor = "#ff4757";
+    timerEl.style.color = "#ff4757";
+  } else {
+    timerEl.style.borderColor = "#2ed573";
+    timerEl.style.color = "#fff";
+  }
+
+  // Prediction Logic (Only changes when period changes)
+  if(currentPeriod !== lastPeriod) {
+    const lastThree = parseInt(currentPeriod.slice(-3));
+    
+    // Simple logic (Fake)
+    const digits = lastThree.toString().split('').map(Number);
+    const sum = digits.reduce((a,b)=>a+b,0);
+    const result = (sum % 2 === 0) ? "SMALL" : "BIG"; // Example logic
+    
+    const predEl = document.getElementById('pred-display');
+    predEl.textContent = result;
+    
+    if(result === "BIG") {
+      predEl.style.backgroundImage = "linear-gradient(#f1c40f, #e67e22)";
+    } else {
+      predEl.style.backgroundImage = "linear-gradient(#3498db, #2980b9)";
+    }
+    
+    lastPeriod = currentPeriod;
+  }
+}
+
+/*
+=========================================================
+ 3. SMOOTH DRAG (Mobile Optimized)
+=========================================================
+*/
+function makeSmoothDraggable(el) {
+  let isDragging = false;
+  let startX, startY, initialLeft, initialTop;
+
+  // Touch Events (Mobile)
+  el.addEventListener('touchstart', (e) => {
+    isDragging = true;
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    
+    const rect = el.getBoundingClientRect();
+    initialLeft = rect.left;
+    initialTop = rect.top;
+    
+    // Remove transitions during drag
+    el.style.transition = 'none';
+  }, { passive: false });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    
+    // Prevent scrolling
+    if (e.cancelable) e.preventDefault();
+    
+    const touch = e.touches[0];
+    const dx = touch.clientX - startX;
+    const dy = touch.clientY - startY;
+    
+    el.style.left = `${initialLeft + dx}px`;
+    el.style.top = `${initialTop + dy}px`;
+    // Ensure standard positioning override
+    el.style.bottom = 'auto';
+    el.style.right = 'auto';
+  }, { passive: false });
+
+  document.addEventListener('touchend', () => {
+    isDragging = false;
+    // Re-enable smooth transitions for other interactions
+    el.style.transition = 'transform 0.1s'; 
+  });
+
+  // Mouse Events (Desktop)
+  el.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    const rect = el.getBoundingClientRect();
+    initialLeft = rect.left;
+    initialTop = rect.top;
+    el.style.transition = 'none';
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    el.style.left = `${initialLeft + dx}px`;
+    el.style.top = `${initialTop + dy}px`;
+    el.style.bottom = 'auto';
+    el.style.right = 'auto';
+  });
+
+  document.addEventListener('mouseup', () => { isDragging = false; });
+}
+
+// Initialize Drag
+makeSmoothDraggable(document.getElementById('widget'));
+makeSmoothDraggable(document.getElementById('float-btn'));
+
+</script>
+</body>
+</html>
